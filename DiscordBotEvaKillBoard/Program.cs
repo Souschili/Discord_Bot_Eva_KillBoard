@@ -44,7 +44,8 @@ namespace DiscordBotEvaKillBoard
         {
             DiscordSocketConfig config = new DiscordSocketConfig
             {
-                GatewayIntents = GatewayIntents.Guilds
+                //GatewayIntents = GatewayIntents.Guilds
+                GatewayIntents = GatewayIntents.Guilds | GatewayIntents.MessageContent|GatewayIntents.GuildMessages
             };
 
             _client = new DiscordSocketClient(config);
