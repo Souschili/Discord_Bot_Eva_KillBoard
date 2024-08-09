@@ -1,6 +1,7 @@
 ﻿using Discord;
 using Discord.WebSocket;
 using Microsoft.Extensions.Configuration;
+using WebSocketSharp;
 
 namespace DiscordBotEvaKillBoard
 {
@@ -8,6 +9,7 @@ namespace DiscordBotEvaKillBoard
     {
         private DiscordSocketClient _client;
         private IConfiguration _configuration;
+        private readonly string _socketUrl = "wss://zkillboard.com/websocket/";
 
         // Получение конфигурации
         private static IConfigurationBuilder GetConfig()
@@ -29,6 +31,7 @@ namespace DiscordBotEvaKillBoard
             {
                 _configuration = GetConfig().Build();
                 await StartBotAsync(_configuration);
+                await StartListening();
                 // Ожидание завершения работы бота
                 await Task.Delay(Timeout.Infinite);
             }
@@ -38,6 +41,28 @@ namespace DiscordBotEvaKillBoard
                 Console.WriteLine($"Ошибка: {ex.Message}");
                 Console.WriteLine(ex.StackTrace);
             }
+        }
+
+        private async Task StartListening()
+        {
+            // create websocket
+            using var ws=new WebSocket(_socketUrl);
+
+            // receive message event
+            ws.OnMessage += (sender, e) =>
+            {
+                Console.WriteLine("Получено сообщение: " + e.Data);
+            };
+
+            // connect to server
+            ws.Connect();
+
+            // for test we subscribe to all messages
+            var subscribeMessage = "{\"action\":\"sub\",\"channel\":\"killstream\"}";
+            ws.Send(subscribeMessage);
+
+            await Task.Delay(Timeout.Infinite);
+
         }
 
         private async Task StartBotAsync(IConfiguration configuration)
