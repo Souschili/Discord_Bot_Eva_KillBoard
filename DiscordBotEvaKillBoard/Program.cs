@@ -1,6 +1,7 @@
 ﻿using Discord;
 using Discord.WebSocket;
 using Microsoft.Extensions.Configuration;
+using Newtonsoft.Json;
 using WebSocketSharp;
 
 namespace DiscordBotEvaKillBoard
@@ -30,11 +31,10 @@ namespace DiscordBotEvaKillBoard
             try
             {
                 _configuration = GetConfig().Build();
-                //var botTask = StartBotAsync(_configuration);
+                var botTask = StartBotAsync(_configuration);
                 var socketTask = StartListening();
 
-                //await Task.WhenAll(botTask, socketTask);
-                await Task.WhenAll(socketTask);
+                await Task.WhenAll(botTask, socketTask);
             }
             catch (Exception ex)
             {
@@ -54,47 +54,61 @@ namespace DiscordBotEvaKillBoard
                     Console.WriteLine(ex.StackTrace);
                 }
             }
-
         }
 
         private async Task StartListening()
         {
-            // создание
             var ws = new WebSocket(_socketUrl);
 
-            // реакция на полученное событие от сокета к которому мы подключены
-            ws.OnMessage += (sender, e) =>
+            ws.OnMessage += async (sender, e) =>
             {
-                // https://zkillboard.com/kill/{killmail_id}/
-                Console.WriteLine("Получено сообщение: " + e.Data);
+                // обработчик не дает запускать напрямую асинхронные методы мы используем Таск
+                await Task.Run(async () =>
+                {
+                    try
+                    {
+                        KillEvent killEvent = JsonConvert.DeserializeObject<KillEvent>(e.Data)!;
+                        if (killEvent != null)
+                        {
+                            await Console.Out.WriteLineAsync($"Полученно сообщение : {killEvent.Url}");
+                            await SendMessageToChannelAsync(killEvent.Url);
+                        }
+                        else
+                        {
+                            Console.WriteLine("Не удалось обработать сообщение");
+                        }
+
+                    }
+                    catch (JsonException jsonEx)
+                    {
+                        Console.WriteLine("Ошибка десериализации: " + jsonEx.Message);
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine("Произошла ошибка: " + ex.Message);
+                    }
+
+
+                }).ConfigureAwait(false);
             };
 
-            // подключение
             ws.Connect();
 
-            // для теста подписка на весь поток
-            //var subscribeMessage = "{\"action\":\"sub\",\"channel\":\"killstream\"}";
-            // упрощенная информация
             var subscribeMessage = "{\"action\":\"sub\",\"channel\":\"all:*\"}";
             ws.Send(subscribeMessage);
 
-
-            // не даем закрыться и держим в фоновом режиме
             await Task.Delay(Timeout.Infinite);
-
         }
 
         private async Task StartBotAsync(IConfiguration configuration)
         {
             DiscordSocketConfig config = new DiscordSocketConfig
             {
-                //GatewayIntents = GatewayIntents.Guilds
                 GatewayIntents = GatewayIntents.Guilds | GatewayIntents.MessageContent | GatewayIntents.GuildMessages
             };
 
             _client = new DiscordSocketClient(config);
 
-            // Подписка на события логгирование и если кто-то отправил сообщение на сервере
             _client.Log += LogHandler;
             _client.MessageReceived += MessageHandler;
             _client.Ready += OnReady;
@@ -102,25 +116,17 @@ namespace DiscordBotEvaKillBoard
             await _client.LoginAsync(TokenType.Bot, configuration["Discord:Token"]);
             await _client.StartAsync();
 
-
-            // Держим бота активным
             await Task.Delay(Timeout.Infinite);
         }
 
         private async Task MessageHandler(SocketMessage message)
         {
-            //TODO: add command parser
-            // at the moment all mesages from user in server from all chanels sended to one
-            // check is it users message
             if (message.Author.IsBot)
             {
                 return;
             }
 
-            await SendMessageToChannel(message.Content);
-
-
-
+            await SendMessageToChannelAsync(message.Content);
         }
 
         private async Task LogHandler(LogMessage message)
@@ -130,22 +136,18 @@ namespace DiscordBotEvaKillBoard
 
         private async Task OnReady()
         {
-            await SendMessageToChannel("This is a sea of my life!!!");
+            await SendMessageToChannelAsync("This is a sea of my life!!!");
         }
 
-        private async Task SendMessageToChannel(string message)
+        public async Task SendMessageToChannelAsync(string message)
         {
-            // Получаем ID канала из конфигурации
             ulong channelId = ulong.Parse(_configuration["Discord:ChanelId"]!);
-            // Получаем канал по ID
             var channel = _client.GetChannel(channelId) as ITextChannel;
 
-            // Проверяем, что канал не равен null
             if (channel != null)
             {
                 try
                 {
-                    // Отправляем сообщение в канал
                     await channel.SendMessageAsync(message);
                 }
                 catch (Exception ex)
