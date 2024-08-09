@@ -30,10 +30,19 @@ namespace DiscordBotEvaKillBoard
             try
             {
                 _configuration = GetConfig().Build();
-                await StartBotAsync(_configuration);
-                await StartListening();
-                // Ожидание завершения работы бота
-                await Task.Delay(Timeout.Infinite);
+                var botTask = StartBotAsync(_configuration);
+                var socketTask = StartListening();
+
+                await Task.WhenAll(botTask, socketTask);
+            }
+            catch (AggregateException ex)
+            {
+                // Обработка нескольких исключений
+                foreach (var innerException in ex.InnerExceptions)
+                {
+                    Console.WriteLine($"Ошибка: {innerException.Message}");
+                    Console.WriteLine(innerException.StackTrace);
+                }
             }
             catch (Exception ex)
             {
@@ -45,22 +54,26 @@ namespace DiscordBotEvaKillBoard
 
         private async Task StartListening()
         {
-            // create websocket
-            using var ws=new WebSocket(_socketUrl);
+            // создание
+            var ws = new WebSocket(_socketUrl);
 
-            // receive message event
+            // реакция на полученное событие от сокета к которому мы подключены
             ws.OnMessage += (sender, e) =>
             {
                 Console.WriteLine("Получено сообщение: " + e.Data);
             };
 
-            // connect to server
+            // подключение
             ws.Connect();
 
-            // for test we subscribe to all messages
-            var subscribeMessage = "{\"action\":\"sub\",\"channel\":\"killstream\"}";
+            // для теста подписка на весь поток
+            //var subscribeMessage = "{\"action\":\"sub\",\"channel\":\"killstream\"}";
+            // упрощенная информация
+            var subscribeMessage = "{\"action\":\"sub\",\"channel\":\"all:*\"}";
             ws.Send(subscribeMessage);
 
+
+            // не даем закрыться и держим в фоновом режиме
             await Task.Delay(Timeout.Infinite);
 
         }
@@ -70,7 +83,7 @@ namespace DiscordBotEvaKillBoard
             DiscordSocketConfig config = new DiscordSocketConfig
             {
                 //GatewayIntents = GatewayIntents.Guilds
-                GatewayIntents = GatewayIntents.Guilds | GatewayIntents.MessageContent|GatewayIntents.GuildMessages
+                GatewayIntents = GatewayIntents.Guilds | GatewayIntents.MessageContent | GatewayIntents.GuildMessages
             };
 
             _client = new DiscordSocketClient(config);
@@ -82,6 +95,10 @@ namespace DiscordBotEvaKillBoard
 
             await _client.LoginAsync(TokenType.Bot, configuration["Discord:Token"]);
             await _client.StartAsync();
+
+
+            // Держим бота активным
+            await Task.Delay(Timeout.Infinite);
         }
 
         private async Task MessageHandler(SocketMessage message)
@@ -95,9 +112,9 @@ namespace DiscordBotEvaKillBoard
             }
 
             await SendMessageToChannel(message.Content);
-           
-                
-            
+
+
+
         }
 
         private async Task LogHandler(LogMessage message)
