@@ -61,7 +61,18 @@ namespace DiscordBotEvaKillBoard
 
         private async Task MessageHandler(SocketMessage message)
         {
-            throw new NotImplementedException();
+            //TODO: add command parser
+            // at the moment all mesages from user in server from all chanels sended to one
+            // check is it users message
+            if (message.Author.IsBot)
+            {
+                return;
+            }
+
+            await SendMessageToChannel(message.Content);
+           
+                
+            
         }
 
         private async Task LogHandler(LogMessage message)
