@@ -52,10 +52,16 @@ namespace DiscordBotEvaKillBoard
 
             // Подписка на события логгирование и если кто-то отправил сообщение на сервере
             _client.Log += LogHandler;
+            _client.MessageReceived += MessageHandler;
             _client.Ready += OnReady;
 
             await _client.LoginAsync(TokenType.Bot, configuration["Discord:Token"]);
             await _client.StartAsync();
+        }
+
+        private async Task MessageHandler(SocketMessage message)
+        {
+            throw new NotImplementedException();
         }
 
         private async Task LogHandler(LogMessage message)
