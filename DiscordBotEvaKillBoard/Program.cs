@@ -136,7 +136,7 @@ namespace DiscordBotEvaKillBoard
 
         private async Task OnReady()
         {
-            await SendMessageToChannelAsync("This is a sea of my life!!!");
+            await SendMessageToChannelAsync("Бот готов к работе !!");
         }
 
         public async Task SendMessageToChannelAsync(string message)
