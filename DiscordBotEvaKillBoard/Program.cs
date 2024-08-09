@@ -30,10 +30,11 @@ namespace DiscordBotEvaKillBoard
             try
             {
                 _configuration = GetConfig().Build();
-                var botTask = StartBotAsync(_configuration);
+                //var botTask = StartBotAsync(_configuration);
                 var socketTask = StartListening();
 
-                await Task.WhenAll(botTask, socketTask);
+                //await Task.WhenAll(botTask, socketTask);
+                await Task.WhenAll(socketTask);
             }
             catch (Exception ex)
             {
@@ -64,6 +65,7 @@ namespace DiscordBotEvaKillBoard
             // реакция на полученное событие от сокета к которому мы подключены
             ws.OnMessage += (sender, e) =>
             {
+                // https://zkillboard.com/kill/{killmail_id}/
                 Console.WriteLine("Получено сообщение: " + e.Data);
             };
 
