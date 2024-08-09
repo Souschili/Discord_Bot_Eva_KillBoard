@@ -35,21 +35,25 @@ namespace DiscordBotEvaKillBoard
 
                 await Task.WhenAll(botTask, socketTask);
             }
-            catch (AggregateException ex)
-            {
-                // Обработка нескольких исключений
-                foreach (var innerException in ex.InnerExceptions)
-                {
-                    Console.WriteLine($"Ошибка: {innerException.Message}");
-                    Console.WriteLine(innerException.StackTrace);
-                }
-            }
             catch (Exception ex)
             {
-                // Логирование ошибки
-                Console.WriteLine($"Ошибка: {ex.Message}");
-                Console.WriteLine(ex.StackTrace);
+                if (ex is AggregateException aggregateException)
+                {
+                    // Обработка нескольких исключений
+                    foreach (var innerException in aggregateException.InnerExceptions)
+                    {
+                        Console.WriteLine($"Ошибка: {innerException.Message}");
+                        Console.WriteLine(innerException.StackTrace);
+                    }
+                }
+                else
+                {
+                    // Логирование одиночной ошибки
+                    Console.WriteLine($"Ошибка: {ex.Message}");
+                    Console.WriteLine(ex.StackTrace);
+                }
             }
+
         }
 
         private async Task StartListening()
